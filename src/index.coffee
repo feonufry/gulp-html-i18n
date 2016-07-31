@@ -13,13 +13,13 @@ supportedType     = ['.js', '.json']
 #
 # Convert a property name into a reference to the definition
 #
-getProperty = (propName, properties, opt) ->
+getProperty = (propName, properties, opt, fallbackTried) ->
   tmp = propName.split '.'
   res = properties
   while tmp.length and res
     res = res[tmp.shift()]
 
-    handleUndefined(propName, properties, opt) if res is undefined
+    handleUndefined(propName, properties, opt, fallbackTried) if res is undefined
 
   if res and opt.escapeQuotes is true
     res = res.replace(/"/g, '\\"')
@@ -30,23 +30,28 @@ getProperty = (propName, properties, opt) ->
 #
 # Handler for undefined props
 #
-handleUndefined = (propName, properties, opt) ->
-  if opt.failOnMissing
-    console.error gutil.colors.red "Error: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white properties._lang_}` locale."
+handleUndefined = (propName, properties, opt, fallbackTried) ->
+  lang = if fallbackTried then opt.fallback else properties._lang_ 
+  if opt.failOnMissing and (not opt.fallback or fallbackTried)
+    console.error gutil.colors.red "Error: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale."
     throw gutil.colors.red "Localization was terminated: Undefined key was found, see above."
   else
-    console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white properties._lang_}` locale."
+    if opt.fallback and not fallbackTried
+      if lang != opt.fallback
+        console.warn gutil.colors.grey "Fallback: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale, will search for `#{gutil.colors.white opt.fallback}` locale."
+    else
+      console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale."
 
 #
 # Does the actual work of substituting tags for definitions
 #
-replaceProperties = (content, properties, opt, lv) ->
+replaceProperties = (content, properties, opt, lv, fallbackTried) ->
   lv = lv || 1
   langRegExp = opt.langRegExp || defaultLangRegExp
   if not properties
     return content
   content.replace langRegExp, (full, propName) ->
-    res = getProperty propName, properties, opt
+    res = getProperty propName, properties, opt, fallbackTried
     if typeof res isnt 'string'
       if !opt.fallback
         res = '*' + propName + '*'
@@ -56,7 +61,7 @@ replaceProperties = (content, properties, opt, lv) ->
       if lv > 3
         res = '**' + propName + '**'
       else
-        res = replaceProperties res, properties, opt, lv + 1
+        res = replaceProperties res, properties, opt, lv + 1, fallbackTried
     res
 
 #
@@ -221,7 +226,7 @@ module.exports = (opt = {}) ->
 
             if opt.fallback
               content = replaceProperties content,
-                extend({}, langResource[opt.fallback], {_lang_: lang, _default_lang_: opt.defaultLang || ''}), opt
+                extend({}, langResource[opt.fallback], {_lang_: lang, _default_lang_: opt.defaultLang || ''}), opt, undefined, true
 
             if opt.trace
               tracePath = path.relative(process.cwd(), originPath)
