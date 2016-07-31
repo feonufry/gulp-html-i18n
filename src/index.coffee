@@ -19,7 +19,7 @@ getProperty = (propName, properties, opt) ->
   while tmp.length and res
     res = res[tmp.shift()]
 
-    handleUndefined(propName, opt) if res is undefined
+    handleUndefined(propName, properties, opt) if res is undefined
 
   if res and opt.escapeQuotes is true
     res = res.replace(/"/g, '\\"')
@@ -30,11 +30,12 @@ getProperty = (propName, properties, opt) ->
 #
 # Handler for undefined props
 #
-handleUndefined = (propName, opt) ->
+handleUndefined = (propName, properties, opt) ->
   if opt.failOnMissing
-    throw "#{propName} not found in definition file!"
+    console.error gutil.colors.red "Error: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white properties._lang_}` locale."
+    throw gutil.colors.red "Localization was terminated: Undefined key was found, see above."
   else
-    console.warn "#{propName} not found in definition file!"
+    console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white properties._lang_}` locale."
 
 #
 # Does the actual work of substituting tags for definitions
