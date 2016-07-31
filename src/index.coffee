@@ -33,14 +33,16 @@ getProperty = (propName, properties, opt, fallbackTried) ->
 handleUndefined = (propName, properties, opt, fallbackTried) ->
   lang = if fallbackTried then opt.fallback else properties._lang_ 
   if opt.failOnMissing and (not opt.fallback or fallbackTried)
-    console.error gutil.colors.red "Error: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale."
+    console.error gutil.colors.red "Error: `#{gutil.colors.white propName}` not found in definition file for " + 
+      (if opt.fallback and properties._lang_ != opt.fallback then "`#{gutil.colors.white properties._lang_}/#{gutil.colors.white opt.fallback}` locales." else "`#{gutil.colors.white lang}` locale.")
     throw gutil.colors.red "Localization was terminated: Undefined key was found, see above."
   else
     if opt.fallback and not fallbackTried
-      if lang != opt.fallback
+      if lang != opt.fallback and opt.logFallback
         console.warn gutil.colors.grey "Fallback: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale, will search for `#{gutil.colors.white opt.fallback}` locale."
     else
-      console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale."
+      console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for " + 
+        (if opt.fallback and properties._lang_ != opt.fallback then "`#{gutil.colors.white properties._lang_}/#{gutil.colors.white opt.fallback}` locales." else "`#{gutil.colors.white lang}` locale.")
 
 #
 # Does the actual work of substituting tags for definitions
