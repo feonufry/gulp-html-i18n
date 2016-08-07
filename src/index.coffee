@@ -37,10 +37,7 @@ handleUndefined = (propName, properties, opt, fallbackTried) ->
       (if opt.fallback and properties._lang_ != opt.fallback then "`#{gutil.colors.white properties._lang_}/#{gutil.colors.white opt.fallback}` locales." else "`#{gutil.colors.white lang}` locale.")
     throw gutil.colors.red "Localization was terminated: Undefined key was found, see above."
   else
-    if opt.fallback and not fallbackTried
-      if lang != opt.fallback and opt.logFallback
-        console.warn gutil.colors.grey "Fallback: `#{gutil.colors.white propName}` not found in definition file for `#{gutil.colors.white lang}` locale, will search for `#{gutil.colors.white opt.fallback}` locale."
-    else
+    if not opt.fallback or fallbackTried
       console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for " + 
         (if opt.fallback and properties._lang_ != opt.fallback then "`#{gutil.colors.white properties._lang_}/#{gutil.colors.white opt.fallback}` locales." else "`#{gutil.colors.white lang}` locale.")
 
