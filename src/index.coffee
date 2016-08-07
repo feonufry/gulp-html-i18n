@@ -13,13 +13,13 @@ supportedType     = ['.js', '.json']
 #
 # Convert a property name into a reference to the definition
 #
-getProperty = (propName, properties, opt, fallbackTried) ->
+getProperty = (file, propName, properties, opt, fallbackTried) ->
   tmp = propName.split '.'
   res = properties
   while tmp.length and res
     res = res[tmp.shift()]
 
-    handleUndefined(propName, properties, opt, fallbackTried) if res is undefined
+    handleUndefined(file, propName, properties, opt, fallbackTried) if res is undefined
 
   if res and opt.escapeQuotes is true
     res = res.replace(/"/g, '\\"')
@@ -30,27 +30,27 @@ getProperty = (propName, properties, opt, fallbackTried) ->
 #
 # Handler for undefined props
 #
-handleUndefined = (propName, properties, opt, fallbackTried) ->
+handleUndefined = (file, propName, properties, opt, fallbackTried) ->
   lang = if fallbackTried then opt.fallback else properties._lang_ 
   if opt.failOnMissing and (not opt.fallback or fallbackTried)
-    console.error gutil.colors.red "Error: `#{gutil.colors.white propName}` not found in definition file for " + 
+    console.error gutil.colors.red "Error at #{gutil.colors.white file.path}: `#{gutil.colors.white propName}` not found in definition file for " + 
       (if opt.fallback and properties._lang_ != opt.fallback then "`#{gutil.colors.white properties._lang_}/#{gutil.colors.white opt.fallback}` locales." else "`#{gutil.colors.white lang}` locale.")
     throw gutil.colors.red "Localization was terminated: Undefined key was found, see above."
   else
     if not opt.fallback or fallbackTried
-      console.warn gutil.colors.yellow "Warning: `#{gutil.colors.white propName}` not found in definition file for " + 
+      console.warn gutil.colors.yellow "Warning at #{gutil.colors.white file.path}: : `#{gutil.colors.white propName}` not found in definition file for " + 
         (if opt.fallback and properties._lang_ != opt.fallback then "`#{gutil.colors.white properties._lang_}/#{gutil.colors.white opt.fallback}` locales." else "`#{gutil.colors.white lang}` locale.")
 
 #
 # Does the actual work of substituting tags for definitions
 #
-replaceProperties = (content, properties, opt, lv, fallbackTried) ->
+replaceProperties = (file, content, properties, opt, lv, fallbackTried) ->
   lv = lv || 1
   langRegExp = opt.langRegExp || defaultLangRegExp
   if not properties
     return content
   content.replace langRegExp, (full, propName) ->
-    res = getProperty propName, properties, opt, fallbackTried
+    res = getProperty file, propName, properties, opt, fallbackTried
     if typeof res isnt 'string'
       if !opt.fallback
         res = '*' + propName + '*'
@@ -60,7 +60,7 @@ replaceProperties = (content, properties, opt, lv, fallbackTried) ->
       if lv > 3
         res = '**' + propName + '**'
       else
-        res = replaceProperties res, properties, opt, lv + 1, fallbackTried
+        res = replaceProperties file, res, properties, opt, lv + 1, fallbackTried
     res
 
 #
@@ -186,7 +186,7 @@ module.exports = (opt = {}) ->
     getLangResource(langDir, opt).then(
       (langResource) =>
         if file._lang_
-          content = replaceProperties file.contents.toString(),
+          content = replaceProperties file, file.contents.toString(),
             extend({}, langResource[file._lang_], {_lang_: file._lang_, _default_lang_: opt.defaultLang || ''}), opt
           file.contents = new Buffer content
           @push file
@@ -202,7 +202,7 @@ module.exports = (opt = {}) ->
             if opt.createLangDirs
               newFilePath = file.base + lang + '/' + newFilePath.slice(file.base.length)
               if opt.filenameI18n
-                newFilePath = replaceProperties newFilePath,
+                newFilePath = replaceProperties file, newFilePath,
                   extend({}, langResource[lang], {_lang_: lang, _default_lang_: opt.defaultLang || ''}), opt
             #
             # If the option `inline` is set, replace the tags in the same source file,
@@ -212,7 +212,7 @@ module.exports = (opt = {}) ->
               newFilePath = originPath
             else
               if opt.filenameI18n
-                newFilePath = replaceProperties newFilePath,
+                newFilePath = replaceProperties file, newFilePath,
                   extend({}, langResource[lang], {_lang_: lang, _default_lang_: opt.defaultLang || ''}), opt
               else
                 newFilePath = gutil.replaceExtension(
@@ -220,11 +220,11 @@ module.exports = (opt = {}) ->
                   seperator + lang + path.extname(originPath)
                 )
 
-            content = replaceProperties file.contents.toString(),
+            content = replaceProperties file, file.contents.toString(),
               extend({}, langResource[lang], {_lang_: lang, _default_lang_: opt.defaultLang || ''}), opt
 
             if opt.fallback
-              content = replaceProperties content,
+              content = replaceProperties file, content,
                 extend({}, langResource[opt.fallback], {_lang_: lang, _default_lang_: opt.defaultLang || ''}), opt, undefined, true
 
             if opt.trace
